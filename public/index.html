@@ -2,30 +2,45 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Ügyfél Belépés</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ügyfél Belépés - Mester Rendszer</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
-        .login-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
+        .login-card { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 350px; text-align: center; }
+        h2 { color: #333; margin-bottom: 1.5rem; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: background 0.3s; margin-top: 1rem; }
         button:hover { background: #0056b3; }
+        .status-msg { margin-top: 15px; font-size: 0.9rem; color: #666; }
     </style>
 </head>
 <body>
     <div class="login-card">
         <h2>Bejelentkezés</h2>
         <input type="email" id="email" placeholder="Email cím">
-        <input type="password" id="pass" placeholder="Jelszó">
-        <button onclick="login()">Belépés</button>
+        <input :type="password" id="pass" placeholder="Jelszó">
+        <button id="loginBtn" onclick="login()">Belépés</button>
+        <div id="msg" class="status-msg"></div>
     </div>
 
     <script>
-        // FONTOS: Itt írd át a Railway-es címedre, ha feltöltötted!
-        const API_URL = "https://a-te-projekted.railway.app"; 
+        // EZ A TRÜKK: Automatikusan kitalálja, hol fut a szerver (Railway vagy Local)
+        const API_URL = window.location.origin; 
 
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('pass').value;
+            const btn = document.getElementById('loginBtn');
+            const msg = document.getElementById('msg');
+
+            if (!email || !password) {
+                alert("Kérlek töltsd ki mindkét mezőt!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Bejelentkezés...";
+            msg.innerText = "Kapcsolódás a szerverhez...";
 
             try {
                 const response = await fetch(`${API_URL}/auth/login`, {
@@ -35,16 +50,26 @@
                 });
 
                 const data = await response.json();
+
                 if (data.success) {
+                    msg.style.color = "green";
+                    msg.innerText = "Sikeres belépés!";
                     localStorage.setItem('token', data.token);
-                    alert("Sikeres belépés!");
-                    // Itt irányítsd át az admin oldalra:
-                    // window.location.href = "admin.html";
+                    
+                    // Itt tudod továbbküldeni az ügyfelet a belső oldalra:
+                    // window.location.href = "/admin-panel.html"; 
+                    alert("Sikeres belépés! Token elmentve.");
                 } else {
-                    alert("Hiba: " + data.message);
+                    msg.style.color = "red";
+                    msg.innerText = "Hiba: " + (data.message || "Hibás adatok!");
                 }
             } catch (err) {
-                alert("Nem sikerült elérni a szervert!");
+                console.error(err);
+                msg.style.color = "red";
+                msg.innerText = "Hiba: A szerver nem válaszol!";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Belépés";
             }
         }
     </script>
