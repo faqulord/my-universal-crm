@@ -9,48 +9,49 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- DINAMIKUS CSATLAKOZÁS ---
-// Itt nem írunk be nevet! A process.env.MONGO_URI mindent tartalmaz.
-const mongoURI = process.env.MONGO_URI; 
-
-mongoose.connect(mongoURI)
-    .then(() => console.log("Rendszer aktív: Az ügyfél adatbázisa csatlakoztatva!"))
+// Kapcsolódás az adatbázishoz (Railway-ről jön az URI)
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("Adatbázis sikeresen összekötve!"))
     .catch(err => console.error("Adatbázis hiba:", err));
 
-// FELHASZNÁLÓ MODELL (Univerzális)
-const User = mongoose.model('User', new mongoose.Schema({
+// Felhasználó séma
+const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-}));
+    password: { type: String, required: true }
+});
+const User = mongoose.model('User', UserSchema);
 
-// BEJELENTKEZÉS LOGIKA
-app.post('/login', async (req, res) => {
+// --- ÚTVONALAK ---
+
+// 1. REGISZTRÁCIÓ (Ezzel hozod létre az első admint az ügyfélnek)
+app.post('/auth/register', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
-
-        if (user && await bcrypt.compare(password, user.password)) {
-            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
-            return res.json({ success: true, token });
-        }
-        res.status(401).json({ success: false, message: "Hibás belépési adatok!" });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Szerver hiba" });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ email, password: hashedPassword });
+        await newUser.save();
+        res.status(201).json({ success: true, message: "Felhasználó létrehozva!" });
+    } catch (e) {
+        res.status(500).json({ success: false, message: "Hiba: Lehet, hogy már létezik ez az email?" });
     }
 });
 
-// REGISZTRÁCIÓ (Hogy az ügyfél létrehozhassa az első adminját)
-app.post('/register', async (req, res) => {
+// 2. BEJELENTKEZÉS
+app.post('/auth/login', async (req, res) => {
     try {
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
-        const newUser = new User({ email: req.body.email, password: hashedPassword });
-        await newUser.save();
-        res.json({ success: true, message: "Ügyfél regisztrálva!" });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Regisztrációs hiba" });
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ success: false, message: "Nincs ilyen felhasználó!" });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ success: false, message: "Hibás jelszó!" });
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        res.json({ success: true, token, message: "Sikeres belépés!" });
+    } catch (e) {
+        res.status(500).json({ success: false, message: "Szerver hiba történt." });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Szerver fut a ${PORT} porton`));
+app.listen(PORT, () => console.log(`Szerver aktív a ${PORT} porton.`));
