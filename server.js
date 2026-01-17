@@ -15,15 +15,27 @@ const Client = mongoose.model('Client', new mongoose.Schema({
     notes: String, amount: Number
 }));
 
+// DINAMIKUS CSOMAG ÉS IPARÁG KEZELÉS
 const getConfig = () => {
-    const ind = process.env.INDUSTRY || 'default';
-    const plan = process.env.PLAN || 'basic';
+    const ind = (process.env.INDUSTRY || 'default').toLowerCase();
+    const plan = (process.env.PLAN || 'basic').toLowerCase(); // Kisbetűsítés a biztonság kedvéért
+    
+    console.log(`AKTÍV CSOMAG: ${plan} | IPARÁG: ${ind}`);
+
     const industries = {
         'szerviz': { f1: 'Tulajdonos', f2: 'Rendszám/Típus', menu: 'Járművek' },
         'ugyved': { f1: 'Ügyfél neve', f2: 'Ügyszám/Tárgy', menu: 'Ügyek/Akták' },
         'default': { f1: 'Ügyfél', f2: 'Projekt/Feladat', menu: 'Ügyfelek' }
     };
-    return { ...industries[ind] || industries['default'], isPro: plan === 'pro' || plan === 'premium', isPremium: plan === 'premium' };
+
+    const config = industries[ind] || industries['default'];
+    
+    return { 
+        ...config, 
+        plan: plan,
+        isPro: plan === 'pro' || plan === 'premium', 
+        isPremium: plan === 'premium' 
+    };
 };
 
 app.get('/', (req, res) => {
@@ -41,49 +53,29 @@ app.get('/', (req, res) => {
         :root { --accent: ${theme}; --bg: #ffffff; --card: #f8fafc; --border: #e2e8f0; --sidebar-w: 260px; }
         body { font-family: sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg); overflow: hidden; }
         
-        /* OLDALSÁV JAVÍTVA */
         .sidebar { 
             width: var(--sidebar-w); background: #0f172a; color: white; padding: 20px; 
             display: flex; flex-direction: column; position: fixed; height: 100%; 
             transition: transform 0.3s ease; z-index: 1000;
         }
         .sidebar.closed { transform: translateX(-100%); }
+        .main { flex: 1; padding: 25px; margin-left: var(--sidebar-w); transition: margin 0.3s ease; overflow-y: auto; padding-top: 70px; }
         
-        .overlay { 
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 900; 
-        }
-        .overlay.active { display: block; }
+        @media (max-width: 900px) { .main { margin-left: 0; } .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
 
-        /* MOBIL GOMB */
-        .menu-btn { 
-            position: fixed; top: 15px; left: 15px; background: var(--accent); 
-            color: white; border: none; padding: 10px; cursor: pointer; z-index: 1100;
-            display: flex; align-items: center; justify-content: center; border-radius: 4px;
-        }
-
-        .main { 
-            flex: 1; padding: 25px; margin-left: var(--sidebar-w); 
-            transition: margin 0.3s ease; overflow-y: auto; padding-top: 70px;
-        }
-        .main.full { margin-left: 0; }
-
-        @media (max-width: 900px) {
-            .main { margin-left: 0; }
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
-        }
-
-        .nav-item { padding: 12px; cursor: pointer; border-radius: 6px; color: #94a3b8; margin-bottom: 5px; transition: 0.2s; }
-        .nav-item:hover, .nav-item.active { background: var(--accent); color: white; }
+        .menu-btn { position: fixed; top: 15px; left: 15px; background: var(--accent); color: white; border: none; padding: 10px; cursor: pointer; z-index: 1100; border-radius: 4px; }
+        .nav-item { padding: 12px; cursor: pointer; border-radius: 6px; color: #94a3b8; margin-bottom: 5px; }
+        .nav-item.active, .nav-item:hover { background: var(--accent); color: white; }
+        
         .card { background: white; padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
-        
-        input, select, textarea { padding: 12px; border: 1px solid var(--border); margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; }
-        button { padding: 12px 20px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        input, textarea { padding: 12px; border: 1px solid var(--border); margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { padding: 12px 20px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
         
         table { width: 100%; border-collapse: collapse; min-width: 600px; }
         th { text-align: left; font-size: 11px; text-transform: uppercase; color: #64748b; padding: 15px; border-bottom: 2px solid var(--border); }
-        td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        td { padding: 15px; border-bottom: 1px solid var(--border); }
 
+        /* CSOMAG SZŰRÉS JAVÍTVA */
         .pro-only { display: ${conf.isPro ? 'block' : 'none'}; }
         .premium-only { display: ${conf.isPremium ? 'block' : 'none'}; }
 
@@ -93,32 +85,32 @@ app.get('/', (req, res) => {
 <body>
     <div id="login">
         <h1 style="color:var(--accent)">${brand}</h1>
-        <input type="password" id="pw" placeholder="Mester Jelszó" style="width: 280px; text-align:center;">
+        <p style="color:#64748b">Csomag: <b>${conf.plan.toUpperCase()}</b></p>
+        <input type="password" id="pw" placeholder="Jelszó" style="width: 280px; text-align:center;">
         <button onclick="check()" style="width: 280px; margin-top:10px;">Belépés</button>
     </div>
 
     <button class="menu-btn" onclick="toggleMenu()">☰ Menü</button>
-    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
     <div class="sidebar" id="sidebar">
         <h2 style="color:var(--accent); font-size: 20px;">${brand}</h2>
-        <div class="nav-item active" onclick="navigate('dash')">📊 Dashboard</div>
-        <div class="nav-item" onclick="navigate('items')">📂 ${conf.menu}</div>
-        <div class="nav-item pro-only" onclick="navigate('docs')">📁 Dokumentumok</div>
-        <div class="nav-item premium-only" onclick="navigate('money')">💳 Pénzügyek</div>
+        <div class="nav-item active">📊 Dashboard</div>
+        <div class="nav-item">📂 ${conf.menu}</div>
+        <div class="nav-item pro-only">📁 Dokumentumok (PRO)</div>
+        <div class="nav-item premium-only">💳 Pénzügyek (PREMIUM)</div>
         <button onclick="location.reload()" style="margin-top:auto; background:transparent; border:1px solid #334155;">Kilépés</button>
     </div>
 
-    <div class="main" id="main">
+    <div class="main">
         <div class="card">
-            <h2 style="margin:0 0 15px 0;">Új rögzítése</h2>
+            <h2>Új rögzítése</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
                 <input type="text" id="f1" placeholder="${conf.f1}">
                 <input type="text" id="f2" placeholder="${conf.f2}">
                 <input type="date" id="d">
             </div>
-            <div class="pro-only"><textarea id="notes" placeholder="Megjegyzések..."></textarea></div>
-            <div class="premium-only"><input type="number" id="amt" placeholder="Összeg (Ft)"></div>
+            <div class="pro-only"><textarea id="notes" placeholder="Megjegyzések (Csak PRO/PREMIUM)..."></textarea></div>
+            <div class="premium-only"><input type="number" id="amt" placeholder="Összeg Ft (Csak PREMIUM)"></div>
             <button onclick="save()" style="margin-top:15px; width:100%;">+ Mentés</button>
         </div>
 
@@ -131,19 +123,7 @@ app.get('/', (req, res) => {
     </div>
 
     <script>
-        function toggleMenu() {
-            const sb = document.getElementById('sidebar');
-            const ov = document.getElementById('overlay');
-            sb.classList.toggle('open');
-            ov.classList.toggle('active');
-        }
-
-        function navigate(target) {
-            // Mobilon bezárjuk a menüt kattintás után
-            if(window.innerWidth < 900) toggleMenu();
-            console.log("Navigáció: " + target);
-        }
-
+        function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); }
         function check() {
             if(document.getElementById('pw').value === '${process.env.ADMIN_PASS}') {
                 document.getElementById('login').style.display='none';
@@ -173,7 +153,6 @@ app.get('/', (req, res) => {
                     <td style="text-align:right;"><button onclick="upd('\${i._id}')">✔</button></td>
                 </tr>\`).join('');
         }
-
         async function upd(id) { await fetch('/api/c/'+id, {method:'PUT'}); load(); }
     </script>
 </body>
