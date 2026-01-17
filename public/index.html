@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM | faqudeveloper</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --accent: #007bff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        body { display: flex; background: #f4f4f4; min-height: 100vh; }
+        .sidebar { width: 260px; background: #000; color: #fff; position: fixed; height: 100vh; transition: 0.3s; }
+        .sidebar-h { padding: 30px; text-align: center; font-weight: bold; border-bottom: 1px solid #222; }
+        .sidebar-m ul { list-style: none; padding-top: 20px; }
+        .sidebar-m li { padding: 15px 25px; cursor: pointer; color: #888; display: flex; align-items: center; gap: 15px; }
+        .sidebar-m li.active { color: #fff; background: #111; border-left: 4px solid var(--accent); }
+        .main { flex: 1; margin-left: 260px; padding: 20px; }
+        .card { background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #eee; }
+        .footer { position: fixed; bottom: 20px; left: 100px; color: var(--accent); font-weight: bold; font-size: 0.8rem; }
+        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-h" id="brand-name">BETÖLTÉS...</div>
+        <nav class="sidebar-m"><ul id="menu-list"></ul></nav>
+        <div class="footer">faqudeveloper</div>
+    </aside>
+    <main class="main">
+        <h1 id="welcome-text">Üdvözöljük!</h1>
+        <div class="card" id="main-content">Adatok betöltése...</div>
+    </main>
+
+    <script>
+        async function loadConfig() {
+            const res = await fetch('/api/config');
+            const config = await res.json();
+            
+            document.documentElement.style.setProperty('--accent', config.color);
+            document.getElementById('brand-name').innerText = config.brandName;
+
+            const industries = {
+                'SZERVIZ': { title: 'Szerviz Panel', menu: ['Munkalapok', 'Autók', 'Alkatrészek', 'Beállítások'] },
+                'ETTEREM': { title: 'Étterem CRM', menu: ['Rendelések', 'Étlap', 'Asztalok', 'Beállítások'] },
+                'SZALON': { title: 'Szalon CRM', menu: ['Időpontok', 'Vendégek', 'Szolgáltatások', 'Beállítások'] }
+            };
+
+            const data = industries[config.industry] || industries['SZERVIZ'];
+            document.getElementById('welcome-text').innerText = data.title;
+            document.getElementById('main-content').innerText = "Rendszer készen áll: " + config.brandName;
+            
+            const menuUl = document.getElementById('menu-list');
+            menuUl.innerHTML = data.menu.map((m, i) => `<li class="${i===0?'active':''}"><span>${m}</span></li>`).join('');
+        }
+        loadConfig();
+    </script>
+</body>
+</html>
