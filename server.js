@@ -1,6 +1,5 @@
-/* MASTER CRM - SINGLE FILE SOLUTION
-   Telepítés: npm install express mongoose cors nodemailer dotenv cookie-parser
-   Indítás: node server.js
+/* MASTER CRM - UNIVERSAL ENTERPRISE VERSION
+   Javítva: 2026.01.18 - Teljes fájl
 */
 
 const express = require('express');
@@ -12,28 +11,29 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Űrlap adatokhoz
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(cookieParser());
 
-// --- 1. BIZTONSÁG ÉS AUTH ---
+// --- 1. KONFIGURÁCIÓ ÉS AUTH ---
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const BRAND = process.env.BRAND_NAME || 'Master CRM';
 
-// Middleware: Csak belépett felhasználókat enged tovább
+// Middleware a védelemhez
 const requireAuth = (req, res, next) => {
+    // Ha a süti megegyezik a jelszóval, továbbengedjük
     if (req.cookies.token === ADMIN_PASS) {
         next();
     } else {
-        res.send(loginHtml()); // Ha nincs belépve, login oldalt kap
+        res.send(loginHtml());
     }
 };
 
 // --- 2. ADATBÁZIS ---
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
-    .then(() => console.log("MongoDB OK"))
-    .catch(() => console.log("DB HIBA - Ellenőrizd a MONGO_URI-t!"));
+    .then(() => console.log("MongoDB KAPCSOLAT OK"))
+    .catch(err => console.error("MongoDB HIBA:", err));
 
 const Client = mongoose.model('Client', new mongoose.Schema({
     f1: String, f2: String, email: String, d: String,
@@ -42,35 +42,34 @@ const Client = mongoose.model('Client', new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 }));
 
-// --- 3. DINAMIKUS IPARÁG LOGIKA (INDUSTRY SWITCH) ---
+// --- 3. DINAMIKUS IPARÁG LOGIKA ---
 const getConfig = () => {
     const ind = (process.env.INDUSTRY || 'default').trim().toLowerCase();
     const plan = (process.env.PLAN || 'basic').trim().toLowerCase();
 
-    // Itt vannak a "skinek" a különböző vállalkozásokhoz
     const industries = {
-        'szerviz': { // Autószerelő
+        'szerviz': { 
             f1: 'Tulajdonos', f2: 'Rendszám/Típus', menu: 'Járművek', 
             stats: ['Munkafelvétel', 'Alkatrészre vár', 'Szerelés alatt', 'Kész', 'Kiadva'],
             temps: { 'ready': 'Az autó elkészült', 'wait': 'Alkatrész érkezésére várunk', 'offer': 'Árajánlat javításra' } 
         },
-        'tech': { // GSM, Laptop szerviz
+        'tech': { 
             f1: 'Ügyfél neve', f2: 'Eszköz + Hiba', menu: 'Eszközök',
             stats: ['Bevételezve', 'Bevizsgálás', 'Alkatrész rendelés', 'Javítva', 'Tesztelve'],
             temps: { 'done': 'A készülék javítva átvehető', 'diag': 'Bevizsgálás eredménye', 'parts': 'Alkatrész megérkezett' }
         },
-        'barber': { // Fodrász, Barber
-            f1: 'Vendég neve', f2: 'Szolgáltatás (Haj/Szakáll)', menu: 'Vendégek',
+        'barber': { 
+            f1: 'Vendég neve', f2: 'Szolgáltatás', menu: 'Vendégek',
             stats: ['Időpontot kért', 'Megerősítve', 'Fizetett', 'Nem jelent meg'],
-            temps: { 'remind': 'Emlékeztető: Holnap várunk!', 'thx': 'Köszönjük, hogy nálunk jártál (Értékelés)', 'promo': 'Régen láttunk, gyere el újra!' }
+            temps: { 'remind': 'Emlékeztető: Holnap várunk!', 'thx': 'Köszönjük, hogy nálunk jártál', 'promo': 'Régen láttunk, gyere el újra!' }
         },
-        'ugyved': { // Ügyvéd
+        'ugyved': { 
             f1: 'Ügyfél neve', f2: 'Ügyszám/Tárgy', menu: 'Akták', 
             stats: ['Aktív', 'Iratra vár', 'Tárgyalás', 'Lezárva'],
             temps: { 'doc': 'Új irat érkezett', 'date': 'Időpont emlékeztető', 'info': 'Tájékoztatás az ügy állásáról' } 
         },
-        'broker': { // Ingatlanos, Hitelügyintéző
-            f1: 'Ügyfél', f2: 'Ingatlan/Hitel cél', menu: 'Ügyletek',
+        'broker': { 
+            f1: 'Ügyfél', f2: 'Cél', menu: 'Ügyletek',
             stats: ['Érdeklődő', 'Ajánlat kiküldve', 'Szerződéskötés', 'Sikeres zárás'],
             temps: { 'offer': 'Ingatlan ajánlat', 'contract': 'Szerződéstervezet', 'followup': 'Hogy tetszett az ingatlan?' }
         },
@@ -82,42 +81,22 @@ const getConfig = () => {
     };
 
     const c = industries[ind] || industries['default'];
-    // Pro: van doksi feltöltés opció (csak UI), Premium: van pénzügyi jelentés
     return { ...c, plan, isPro: (plan==='pro'||plan==='premium'), isPremium: (plan==='premium'), ind };
 };
 
 // --- 4. HTML GENERÁTOROK ---
-
 function loginHtml(error = "") {
     const theme = process.env.THEME_COLOR || '#3b82f6';
-    return `
-    <!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${BRAND} - Belépés</title>
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; height: 100vh; justify-content: center; align-items: center; margin: 0; }
-        .box { background: #0a0a0a; padding: 40px; border: 1px solid #333; border-radius: 12px; text-align: center; width: 300px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #111; border: 1px solid #333; color: white; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: ${theme}; color: white; border: none; font-weight: bold; border-radius: 6px; cursor: pointer; }
-        .err { color: #ef4444; font-size: 14px; margin-bottom: 10px; }
-    </style></head><body>
-    <div class="box">
-        <h2 style="margin-top:0">${BRAND}</h2>
-        ${error ? `<div class="err">${error}</div>` : ''}
-        <form action="/login" method="POST">
-            <input type="text" name="username" placeholder="Felhasználó" required>
-            <input type="password" name="password" placeholder="Jelszó" required>
-            <button type="submit">BELÉPÉS</button>
-        </form>
-    </div></body></html>`;
+    return `<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${BRAND} Login</title>
+    <style>body{background:#000;color:#fff;font-family:sans-serif;display:flex;height:100vh;justify-content:center;align-items:center;margin:0}.box{background:#0a0a0a;padding:40px;border:1px solid #333;border-radius:12px;text-align:center;width:300px}input{width:100%;padding:12px;margin:10px 0;background:#111;border:1px solid #333;color:white;border-radius:6px;box-sizing:border-box}button{width:100%;padding:12px;background:${theme};color:white;border:none;font-weight:bold;border-radius:6px;cursor:pointer}.err{color:#ef4444;margin-bottom:10px}</style></head><body>
+    <div class="box"><h2 style="margin-top:0">${BRAND}</h2>${error?`<div class="err">${error}</div>`:''}<form action="/login" method="POST"><input type="text" name="username" placeholder="Felhasználó" required><input type="password" name="password" placeholder="Jelszó" required><button type="submit">BELÉPÉS</button></form></div></body></html>`;
 }
 
 function appHtml() {
     const conf = getConfig();
     const theme = process.env.THEME_COLOR || '#3b82f6';
     
-    // Itt a fő applikáció kódja, biztonságosan elzárva
-    return `
-<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -130,33 +109,29 @@ function appHtml() {
         .nav-item:hover, .nav-item.active { background: var(--accent); color: white; }
         .main { flex: 1; padding: 25px; margin-left: 260px; transition: 0.3s; overflow-y: auto; padding-top: 85px; width: 100%; box-sizing: border-box; }
         @media (max-width: 900px) { .main { margin-left: 0; } .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
-        .card { background: var(--card); padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card { background: var(--card); padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; border-radius: 12px; }
         input, textarea, select { padding: 14px; border: 1px solid var(--border); margin: 6px 0; width: 100%; box-sizing: border-box; border-radius: 6px; font-size: 16px; background: #111; color: #fff; outline: none; }
         input:focus, textarea:focus { border-color: var(--accent); }
-        .btn-save { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; font-weight: 800; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-        .view-section { display: none; animation: fadeIn 0.3s; }
+        .btn-save { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; font-weight: 800; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+        .view-section { display: none; }
         .view-section.active { display: block; }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
-        
         table { width: 100%; border-collapse: collapse; min-width: 700px; }
         th { text-align: left; font-size: 11px; text-transform: uppercase; color: #666; padding: 15px; border-bottom: 1px solid var(--border); }
         td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
-        
         .status-pill { padding: 4px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; margin-bottom: 8px; border: 1px solid #333; }
-        .stat-btn { background: #1a1a1a; color: #aaa; border: 1px solid #333; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-right: 4px; margin-top: 4px; transition: 0.2s; }
+        .stat-btn { background: #1a1a1a; color: #aaa; border: 1px solid #333; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-right: 4px; margin-top: 4px; }
         .stat-btn:hover { border-color: var(--accent); color: white; }
-
-        #email-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
-        .modal-content { background: #0a0a0a; padding: 30px; border-radius: 15px; border: 1px solid var(--border); width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+        #email-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: #0a0a0a; padding: 30px; border-radius: 15px; border: 1px solid var(--border); width: 100%; max-width: 500px; }
     </style>
 </head>
 <body>
     <div id="email-modal"><div class="modal-content">
-        <h3 style="margin-top:0;">✉️ Értesítés Küldése</h3>
-        <select id="mail-temp" onchange="applyTemp()"><option value="">-- Gyors sablon választása --</option></select>
+        <h3 style="margin-top:0;">✉️ Értesítés</h3>
+        <select id="mail-temp" onchange="applyTemp()"><option value="">-- Sablon választása --</option></select>
         <input type="text" id="mail-to" readonly style="color:#777; background:#1a1a1a;"><input type="text" id="mail-sub" placeholder="Tárgy">
         <textarea id="mail-msg" rows="6"></textarea>
-        <div style="display:flex; gap:10px; margin-top:10px;"><button onclick="sendMailNow()" class="btn-save">KÜLDÉS</button><button onclick="closeMail()" style="flex:1; background:#222; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; margin-top:10px; font-weight:bold;">MÉGSE</button></div>
+        <div style="display:flex; gap:10px; margin-top:10px;"><button onclick="sendMailNow()" class="btn-save">KÜLDÉS</button><button onclick="closeMail()" style="flex:1; background:#222; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; margin-top:10px;">MÉGSE</button></div>
     </div></div>
 
     <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="position:fixed; top:15px; left:15px; background:var(--card); border:1px solid var(--border); color:white; padding:10px 15px; z-index:6000; font-weight:800; border-radius:6px; cursor:pointer;">☰</button>
@@ -172,7 +147,7 @@ function appHtml() {
 
     <div class="main">
         <div id="view-dash" class="view-section active">
-            <h1>Szia, Mester! 👋</h1>
+            <h1>Áttekintés</h1>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
                 <div class="card"><small style="color:#777">ÖSSZES ÜGY</small><h2 id="st-all" style="margin:5px 0 0 0">0</h2></div>
                 <div class="card"><small style="color:#777">FOLYAMATBAN</small><h2 id="st-act" style="color:#f59e0b; margin:5px 0 0 0">0</h2></div>
@@ -189,42 +164,27 @@ function appHtml() {
                     <input type="text" id="f2" placeholder="${conf.f2}">
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <input type="email" id="email" placeholder="E-mail cím (értesítéshez)">
+                    <input type="email" id="email" placeholder="E-mail">
                     <input type="date" id="d">
                 </div>
-                ${conf.isPro ? `<textarea id="notes" placeholder="Belső jegyzet, munkalap, leírás..."></textarea>` : ''}
-                ${conf.isPremium ? `<input type="number" id="amt" placeholder="Várható összeg (Ft)">` : ''}
-                <button onclick="save()" class="btn-save">MENTÉS HOZZÁADÁSA</button>
+                ${conf.isPro ? `<textarea id="notes" placeholder="Jegyzet..."></textarea>` : ''}
+                ${conf.isPremium ? `<input type="number" id="amt" placeholder="Összeg (Ft)">` : ''}
+                <button onclick="save()" class="btn-save">MENTÉS</button>
             </div>
-            
-            <div style="margin-top:30px;">
-                <input type="text" id="search" onkeyup="renderList()" placeholder="🔍 Keresés név vagy leírás alapján..." style="margin-bottom:15px; background:#0a0a0a;">
-                <div class="card" style="padding:0; overflow-x:auto;">
-                    <table><thead><tr><th>${conf.f1}</th><th>${conf.f2}</th><th>Dátum</th><th>Státusz & Művelet</th><th></th></tr></thead><tbody id="list"></tbody></table>
-                </div>
-            </div>
+            <input type="text" id="search" onkeyup="renderList()" placeholder="🔍 Keresés..." style="margin:20px 0; background:#0a0a0a;">
+            <div class="card" style="padding:0; overflow-x:auto;"><table><thead><tr><th>${conf.f1}</th><th>${conf.f2}</th><th>Dátum</th><th>Státusz</th><th></th></tr></thead><tbody id="list"></tbody></table></div>
         </div>
 
-        <div id="view-docs" class="view-section">
-            <h1>Dokumentumtár</h1><p style="color:#777">A jegyzetekkel ellátott ügyek itt jelennek meg kártyás nézetben.</p>
-            <div id="doc-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px;"></div>
-        </div>
-
-        <div id="view-report" class="view-section">
-            <div style="display:flex; justify-content:space-between; align-items:center;"><h1>Bevételi Jelentés</h1>
-            <button onclick="exportCSV()" style="background:#10b981; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:800; cursor:pointer;">📥 EXCEL LETÖLTÉS</button></div>
-            <div id="report-list"></div>
-        </div>
+        <div id="view-docs" class="view-section"><h1>Dokumentumtár</h1><div id="doc-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px;"></div></div>
+        <div id="view-report" class="view-section"><h1>Bevételek</h1><button onclick="exportCSV()" class="btn-save" style="background:#10b981; width:auto; margin-bottom:20px;">📥 EXPORT</button><div id="report-list"></div></div>
     </div>
 
     <script>
         let rawData = [];
-        const industry = '${conf.ind}';
         const stats = ${JSON.stringify(conf.stats)};
         const templates = ${JSON.stringify(conf.temps || {})};
         let cName = ""; let cTask = "";
 
-        // UI Kezelés
         function showView(vId, btn) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -234,91 +194,100 @@ function appHtml() {
             if(vId === 'items' || vId === 'dash') load();
         }
 
-        // Adatok mentése
         async function save() {
             const body = { 
-                f1: document.getElementById('f1').value, 
-                f2: document.getElementById('f2').value, 
-                email: document.getElementById('email').value, 
-                d: document.getElementById('d').value || new Date().toISOString().split('T')[0], 
-                notes: document.getElementById('notes')?.value || '', 
-                amount: document.getElementById('amt')?.value || 0 
+                f1: document.getElementById('f1').value, f2: document.getElementById('f2').value, 
+                email: document.getElementById('email').value, d: document.getElementById('d').value || new Date().toISOString().split('T')[0], 
+                notes: document.getElementById('notes')?.value || '', amount: document.getElementById('amt')?.value || 0 
             };
-            if(!body.f1 || !body.f2) return alert("Az első két mező kitöltése kötelező!");
-            
-            try {
-                await fetch('/api/c', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
-                document.getElementById('f1').value=''; document.getElementById('f2').value=''; document.getElementById('email').value='';
-                if(document.getElementById('notes')) document.getElementById('notes').value=''; 
-                if(document.getElementById('amt')) document.getElementById('amt').value='';
-                load();
-            } catch(e) { alert("Hiba a mentésnél!"); }
+            if(!body.f1) return alert("Név kötelező!");
+            await fetch('/api/c', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+            document.getElementById('f1').value=''; document.getElementById('f2').value=''; document.getElementById('email').value='';
+            load();
         }
 
-        // Adatok betöltése és renderelés
         async function load() {
-            const res = await fetch('/api/c'); 
-            rawData = await res.json();
-            renderList();
-            updateStats();
+            const res = await fetch('/api/c'); rawData = await res.json();
+            renderList(); updateStats();
         }
 
         function renderList() {
             const term = document.getElementById('search') ? document.getElementById('search').value.toLowerCase() : '';
             const filtered = rawData.filter(i => (i.f1 && i.f1.toLowerCase().includes(term)) || (i.f2 && i.f2.toLowerCase().includes(term)));
             
-            const listHtml = filtered.map(i => {
+            document.getElementById('list').innerHTML = filtered.map(i => {
                 const d = new Date(i.createdAt);
-                
-                // Státusz gombok
-                const statusButtons = stats.map(s => \`<button onclick="upd('\${i._id}', '\${s}')" class="stat-btn" style="\${i.status===s ? 'border-color:var(--accent); color:white;' : ''}">\${s}</button>\`).join('');
-                
-                // Email gomb (csak ha van email cím)
-                const emailBtn = i.email ? \`<button onclick="openMail('\${i.email}', '\${i.f1}', '\${i.f2}')" style="background:#333; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; margin-right:5px;" title="Email küldése">✉</button>\` : '';
+                const statusButtons = stats.map(s => \`<button onclick="upd('\${i._id}', '\${s}')" class="stat-btn" style="\${i.status===s?'border-color:var(--accent);color:white;':''}">\${s}</button>\`).join('');
+                const emailBtn = i.email ? \`<button onclick="openMail('\${i.email}', '\${i.f1}', '\${i.f2}')" style="background:#333;color:white;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;margin-right:5px;">✉</button>\` : '';
 
-                return \`<tr>
-                    <td><b style="color:var(--text); font-size:15px;">\${i.f1}</b></td>
-                    <td>\${i.f2}</td>
-                    <td style="font-size:12px; color:#666">\${d.toLocaleDateString('hu-HU')}</td>
-                    <td>
-                        <span class="status-pill" style="background:\${i.status==='Kész'||i.status==='Lezárva'||i.status==='Javítva'||i.status==='Fizetett'?'#10b981':'#333'}">\${i.status}</span><br>
-                        \${statusButtons}
-                    </td>
-                    <td style="text-align:right; white-space:nowrap;">
-                        \${emailBtn}
-                        <button onclick="del('\${i._id}')" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">🗑</button>
-                    </td>
-                </tr>\`;
+                return \`<tr><td><b>\${i.f1}</b></td><td>\${i.f2}</td><td style="font-size:12px;color:#666">\${d.toLocaleDateString()}</td>
+                <td><span class="status-pill" style="background:\${['Kész','Lezárva','Fizetett'].includes(i.status)?'#10b981':'#333'}">\${i.status}</span><br>\${statusButtons}</td>
+                <td style="text-align:right;">\${emailBtn}<button onclick="del('\${i._id}')" style="background:#ef4444;color:white;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">🗑</button></td></tr>\`;
             }).join('');
-            document.getElementById('list').innerHTML = listHtml;
             
-            // Dokumentum nézet frissítése
             if(document.getElementById('doc-list')) {
                 document.getElementById('doc-list').innerHTML = rawData.filter(i => i.notes && i.notes.trim() !== "").map(i => \`
-                    <div class="card" style="border-left: 3px solid var(--accent)">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <b>\${i.f1}</b>
-                            <small style="color:#555;">\${new Date(i.createdAt).toLocaleDateString()}</small>
-                        </div>
-                        <div style="background:#111; padding:8px; border-radius:4px; margin-bottom:10px; font-size:13px; color:#888;">\${i.f2}</div>
-                        <p style="color:#ccc; font-size:14px; white-space: pre-wrap; margin:0; line-height:1.4;">\${i.notes}</p>
-                    </div>\`).join('');
+                    <div class="card" style="border-left:3px solid var(--accent)"><b>\${i.f1}</b><br><small style="color:#555">\${new Date(i.createdAt).toLocaleDateString()}</small>
+                    <p style="color:#ccc;font-size:14px;white-space:pre-wrap;margin-top:10px;">\${i.notes}</p></div>\`).join('');
             }
         }
 
         function updateStats() {
             document.getElementById('st-all').innerText = rawData.length;
-            const activeCount = rawData.filter(i => !['Kész', 'Lezárva', 'Fizetett', 'Javítva', 'Kiadva', 'Sikeres zárás'].includes(i.status)).length;
-            document.getElementById('st-act').innerText = activeCount;
+            document.getElementById('st-act').innerText = rawData.filter(i => !['Kész', 'Lezárva', 'Fizetett', 'Javítva', 'Sikeres zárás'].includes(i.status)).length;
             
-            // Havi bevétel számítás
             if(document.getElementById('st-mon')) {
-                const now = new Date();
-                const curM = now.getFullYear() + "-" + (now.getMonth()); // JS hónap 0-tól indul
-                let mInc = 0;
-                const mGroup = {};
-                
+                const now = new Date(); const curM = now.getFullYear() + "-" + now.getMonth();
+                let mInc = 0; const mGroup = {};
                 rawData.forEach(i => {
                     const d = new Date(i.createdAt);
-                    const mKey = d.getFullYear() + "-" + d.getMonth();
-                    const mLabel = d.getFullYear() + 
+                    const mLabel = d.getFullYear() + ". " + (d.getMonth() + 1);
+                    if(!mGroup[mLabel]) mGroup[mLabel] = { count: 0, sum: 0 };
+                    if(i.amount) { mGroup[mLabel].sum += i.amount; if(d.getFullYear()+"-"+d.getMonth() == curM) mInc += i.amount; }
+                    mGroup[mLabel].count++;
+                });
+                document.getElementById('st-mon').innerText = mInc.toLocaleString() + " Ft";
+                document.getElementById('report-list').innerHTML = Object.keys(mGroup).map(m => \`<div class="card" style="display:flex;justify-content:space-between;"><div><b>\${m}</b><br><small>\${mGroup[m].count} ügy</small></div><div style="color:var(--accent);font-weight:bold;">\${mGroup[m].sum.toLocaleString()} Ft</div></div>\`).join('');
+            }
+        }
+
+        async function upd(id, s) { await fetch('/api/c/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:s})}); load(); }
+        async function del(id) { if(confirm("Törlés?")) { await fetch('/api/c/'+id, {method:'DELETE'}); load(); } }
+        
+        function openMail(e, n, t) { cName=n; cTask=t; document.getElementById('mail-to').value=e; 
+            document.getElementById('mail-temp').innerHTML = '<option value="">-- Sablon --</option>' + Object.keys(templates).map(k => \`<option value="\${k}">\${templates[k]}</option>\`).join('');
+            document.getElementById('email-modal').style.display = 'flex'; }
+        
+        function applyTemp() { const k = document.getElementById('mail-temp').value; if(!k) return;
+            document.getElementById('mail-sub').value = "${BRAND} Értesítés: " + cTask;
+            document.getElementById('mail-msg').value = "Kedves " + cName + "!\\n\\n" + templates[k] + ".\\n\\nÜdvözlettel:\\n${BRAND}"; }
+        
+        function closeMail() { document.getElementById('email-modal').style.display = 'none'; }
+        async function sendMailNow() { 
+            const res = await fetch('/api/send-email', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ to: document.getElementById('mail-to').value, subject: document.getElementById('mail-sub').value, text: document.getElementById('mail-msg').value })});
+            if(res.ok) { alert("Elküldve!"); closeMail(); } else { alert("Hiba!"); }
+        }
+        function exportCSV() { 
+            let csv = "Nev,Reszlet,Email,Statusz,Osszeg,Datum\\n"; 
+            rawData.forEach(i => { csv += \`"\${i.f1}","\${i.f2}","\${i.email}","\${i.status}","\${i.amount}","\${i.createdAt}"\\n\`; }); 
+            const link = document.createElement("a"); link.href = "data:text/csv;charset=utf-8," + encodeURI("\\ufeff" + csv); link.download = "export.csv"; link.click();
+        }
+        load();
+    </script>
+</body>
+</html>`;
+}
+
+// --- 5. ÚTVONALAK ---
+app.post('/login', (req, res) => {
+    if(req.body.username === ADMIN_USER && req.body.password === ADMIN_PASS) {
+        res.cookie('token', ADMIN_PASS, { httpOnly: true, maxAge: 86400000 });
+        res.redirect('/');
+    } else {
+        res.send(loginHtml("Hibás adatok!"));
+    }
+});
+app.get('/logout', (req, res) => { res.clearCookie('token'); res.redirect('/'); });
+
+app.get('/', requireAuth, (req, res) => res.send(appHtml()));
+app.get('/api/c', requireAuth, async (req, res) => res.json(await Cl
