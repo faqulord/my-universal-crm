@@ -7,8 +7,10 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- 1. ADATBÁZIS ---
-mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 }).catch(() => {});
+// --- 1. ADATBÁZIS (Biztonságos kapcsolat) ---
+mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+    .then(() => console.log("DB Kapcsolat: OK"))
+    .catch(err => console.log("DB Hiba: Várakozás..."));
 
 const Client = mongoose.model('Client', new mongoose.Schema({
     f1: String, f2: String, d: String,
@@ -18,21 +20,31 @@ const Client = mongoose.model('Client', new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 }));
 
-// --- 2. DINAMIKUS KONFIGURÁCIÓ ---
+// --- 2. DINAMIKUS KONFIGURÁCIÓ (Golyóálló változat) ---
 const getConfig = () => {
-    const ind = (process.env.INDUSTRY || 'default').toLowerCase();
-    const plan = (process.env.PLAN || 'basic').toLowerCase();
+    // Trim() és LowerCase() - hogy ne számítson a szóköz vagy kis/nagybetű a Railway-en
+    const ind = (process.env.INDUSTRY || 'default').trim().toLowerCase();
+    const plan = (process.env.PLAN || 'basic').trim().toLowerCase();
+    
+    console.log("BETÖLTÖTT CSOMAG:", plan); // Debug info a Railway Logs-ba
+
     const industries = {
         'szerviz': { f1: 'Tulajdonos', f2: 'Rendszám/Típus', menu: 'Járművek' },
         'ugyved': { f1: 'Ügyfél neve', f2: 'Ügyszám/Tárgy', menu: 'Akták' },
-        'bufe': { f1: 'Beszállító', f2: 'Tétel/Rendelés', menu: 'Készlet' },
+        'bufe': { f1: 'Beszállító', f2: 'Rendelés', menu: 'Készlet' },
         'default': { f1: 'Partner', f2: 'Projekt', menu: 'Ügyfelek' }
     };
+
     const c = industries[ind] || industries['default'];
-    return { ...c, planName: plan.toUpperCase(), isPro: plan==='pro'||plan==='premium', isPremium: plan==='premium' };
+    return { 
+        ...c, 
+        planName: plan.toUpperCase(), 
+        isPro: (plan === 'pro' || plan === 'premium'), 
+        isPremium: (plan === 'premium') 
+    };
 };
 
-// --- 3. INTERFÉSZ ---
+// --- 3. A TELJES INTERFÉSZ (SÖTÉT MÓD) ---
 app.get('/', (req, res) => {
     const conf = getConfig();
     const theme = process.env.THEME_COLOR || '#3b82f6';
@@ -45,27 +57,28 @@ app.get('/', (req, res) => {
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>${brand}</title>
     <style>
-        :root { --accent: ${theme}; --bg: #000000; --card: #111827; --sidebar: #0a0a0a; --text: #ffffff; --border: #1f2937; }
-        body { font-family: -apple-system, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); overflow: hidden; }
+        :root { --accent: ${theme}; --bg: #000000; --card: #0a0a0a; --sidebar: #050505; --text: #ffffff; --border: #1a1a1a; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text); overflow: hidden; }
         
         /* LOGIN */
         #login { position: fixed; inset: 0; background: var(--bg); z-index: 9000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
-        .login-card { background: #0a0a0a; padding: 40px; border-radius: 12px; width: 100%; max-width: 340px; text-align: center; border: 1px solid var(--border); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .signature { margin-top: 30px; font-style: italic; color: #444; font-size: 11px; }
+        .login-card { background: #050505; padding: 40px; border-radius: 12px; width: 100%; max-width: 320px; text-align: center; border: 1px solid var(--border); box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .badge { background: var(--accent); color: white; padding: 4px 10px; border-radius: 50px; font-size: 10px; font-weight: 800; margin-bottom: 20px; display: inline-block; }
+        .signature { margin-top: 30px; font-style: italic; color: #333; font-size: 11px; }
 
         /* SIDEBAR */
-        .sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); padding: 25px; display: flex; flex-direction: column; position: fixed; height: 100%; transition: 0.3s; z-index: 5000; box-sizing: border-box; }
+        .sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; position: fixed; height: 100%; transition: 0.3s ease-in-out; z-index: 6000; box-sizing: border-box; }
         .sidebar.closed { transform: translateX(-100%); }
-        .nav-item { padding: 15px; cursor: pointer; border-radius: 8px; color: #888; margin-bottom: 8px; font-weight: 600; border: none; background: transparent; text-align: left; width: 100%; font-size: 14px; transition: 0.2s; }
+        .nav-item { padding: 14px; cursor: pointer; border-radius: 8px; color: #666; margin-bottom: 8px; font-weight: 600; border: none; background: transparent; text-align: left; width: 100%; font-size: 14px; transition: 0.2s; display: block; }
         .nav-item.active { background: var(--accent); color: white; }
-        .logout { margin-top: auto; padding: 12px; background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; font-weight: 800; cursor: pointer; margin-bottom: 10px; text-align:center; text-decoration:none; }
+        .logout { margin-top: auto; padding: 12px; background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; font-weight: 800; cursor: pointer; text-align: center; }
 
         /* MAIN */
-        .main { flex: 1; padding: 25px; margin-left: 260px; transition: 0.3s; overflow-y: auto; padding-top: 85px; width: 100%; box-sizing: border-box; }
+        .main { flex: 1; padding: 20px; margin-left: 260px; transition: 0.3s; overflow-y: auto; padding-top: 80px; width: 100%; box-sizing: border-box; }
         @media (max-width: 900px) { .main { margin-left: 0; } .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } }
 
-        .menu-btn { position: fixed; top: 15px; left: 15px; background: var(--accent); color: white; border: none; padding: 12px 20px; cursor: pointer; z-index: 6000; font-weight: 800; border-radius: 6px; }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 4500; }
+        .menu-btn { position: fixed; top: 15px; left: 15px; background: var(--accent); color: white; border: none; padding: 10px 18px; cursor: pointer; z-index: 7000; font-weight: 800; border-radius: 4px; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 5500; }
         .overlay.active { display: block; }
 
         .card { background: var(--card); padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; border-radius: 12px; }
@@ -76,24 +89,22 @@ app.get('/', (req, res) => {
         .view-section.active { display: block; }
         
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { text-align: left; font-size: 11px; text-transform: uppercase; color: #555; padding: 15px; border-bottom: 1px solid var(--border); }
+        th { text-align: left; font-size: 11px; text-transform: uppercase; color: #444; padding: 15px; border-bottom: 1px solid var(--border); }
         td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
 
+        /* PLAN FILTER */
         .pro-only { display: ${conf.isPro ? 'block' : 'none'}; }
         .premium-only { display: ${conf.isPremium ? 'block' : 'none'}; }
-        .export-btn { background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <div id="login">
         <div class="login-card">
-            <div style="background:var(--accent); color:white; padding:4px 12px; border-radius:50px; font-size:10px; font-weight:800; margin-bottom:20px; display:inline-block;">${conf.planName} PLAN</div>
-            <h1 style="color:white; margin:0 0 5px 0; font-size:32px; letter-spacing:-1px;">${brand}</h1>
-            <p style="color:#555; font-size:14px; margin-bottom:30px;">CRM Belépés</p>
-            
+            <div class="badge">${conf.planName} PLAN</div>
+            <h1 style="color:white; margin:0 0 5px 0; font-size:28px;">${brand}</h1>
+            <p style="color:#444; font-size:13px; margin-bottom:30px;">CRM Belépés</p>
             <input type="text" id="usr" placeholder="FELHASZNÁLÓNÉV" style="text-align:center; margin-bottom:10px;">
             <input type="password" id="pw" placeholder="JELSZÓ" style="text-align:center;">
-            
             <button onclick="check()" style="width:100%; padding:15px; background:var(--accent); color:white; border:none; font-weight:800; border-radius:6px; cursor:pointer; margin-top:15px;">BELÉPÉS</button>
         </div>
         <div class="signature">faqudeveloper system</div>
@@ -114,41 +125,40 @@ app.get('/', (req, res) => {
     <div class="main">
         <div id="view-dash" class="view-section active">
             <h1>Irányítópult</h1>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
-                <div class="card">Összes rögzítés<h2 id="st-all" style="color:var(--accent)">0</h2></div>
-                <div class="card">Aktív ügyek<h2 id="st-act" style="color:#f59e0b">0</h2></div>
-                <div class="card premium-only">Havi bevétel<h2 id="st-mon" style="color:#10b981">0 Ft</h2></div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:20px;">
+                <div class="card">Összes rögzítés<h2 id="st-all" style="color:var(--accent); margin-top:10px;">0</h2></div>
+                <div class="card">Aktív ügyek<h2 id="st-act" style="color:#f59e0b; margin-top:10px;">0</h2></div>
+                <div class="card premium-only">Havi bevétel<h2 id="st-mon" style="color:#10b981; margin-top:10px;">0 Ft</h2></div>
             </div>
         </div>
 
         <div id="view-items" class="view-section">
             <h1>${conf.menu} Kezelése</h1>
             <div class="card">
-                <h3>Új rögzítése</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
                     <input type="text" id="f1" placeholder="${conf.f1}">
                     <input type="text" id="f2" placeholder="${conf.f2}">
                     <input type="date" id="d">
                 </div>
                 <div class="pro-only"><textarea id="notes" placeholder="Részletes jegyzet..."></textarea></div>
                 <div class="premium-only"><input type="number" id="amt" placeholder="Összeg Ft"></div>
-                <button class="save-btn" onclick="save()">MENTÉS</button>
+                <button class="save-btn" onclick="save()">ADATOK MENTÉSE</button>
             </div>
             <div class="card" style="overflow-x:auto;">
                 <table>
-                    <thead><tr><th>Név</th><th>Részlet</th><th>Dátum</th><th>Állapot</th><th></th></tr></thead>
+                    <thead><tr><th>Név</th><th>Leírás</th><th>Rögzítve</th><th>Állapot</th><th></th></tr></thead>
                     <tbody id="list"></tbody>
                 </table>
             </div>
         </div>
 
         <div id="view-docs" class="view-section">
-            <h1>Jegyzetek és Dokumentumok</h1>
+            <h1>Dokumentumok</h1>
             <div id="doc-list"></div>
         </div>
 
         <div id="view-report" class="view-section">
-            <button class="export-btn" onclick="exportCSV()">📥 EXPORTÁLÁS EXCELBE</button>
+            <button onclick="exportCSV()" style="background:#10b981; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:800; cursor:pointer; margin-bottom:20px;">📥 EXCEL EXPORT</button>
             <h1>Havi Kimutatások</h1>
             <div id="report-list"></div>
         </div>
@@ -164,8 +174,11 @@ app.get('/', (req, res) => {
         function showView(vId, btn) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            document.getElementById('view-' + vId).classList.add('active');
+            
+            const target = document.getElementById('view-' + vId);
+            if(target) target.classList.add('active');
             if(btn) btn.classList.add('active');
+            
             if(window.innerWidth < 900) toggleMenu();
             load();
         }
@@ -173,7 +186,6 @@ app.get('/', (req, res) => {
         function check() {
             const user = document.getElementById('usr').value;
             const pass = document.getElementById('pw').value;
-            // Most már mindkettőt ellenőrizzük!
             if(user === '${process.env.ADMIN_USER}' && pass === '${process.env.ADMIN_PASS}') {
                 document.getElementById('login').style.display='none';
                 load();
@@ -186,6 +198,7 @@ app.get('/', (req, res) => {
                 notes: document.getElementById('notes')?.value || '', amount: document.getElementById('amt')?.value || 0
             };
             await fetch('/api/c', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+            document.getElementById('f1').value=''; document.getElementById('f2').value='';
             load();
         }
 
@@ -208,33 +221,23 @@ app.get('/', (req, res) => {
                 mGroup[mFull].inc += (i.amount || 0); mGroup[mFull].count++;
                 if(mKey === curM) mInc += (i.amount || 0);
 
-                return \`<tr>
-                    <td><b>\${i.f1}</b></td><td>\${i.f2}</td>
-                    <td style="font-size:11px; color:#555">\${d.toLocaleString('hu-HU')}</td>
-                    <td style="color:\${i.status==='Kész'?'#10b981':'#f59e0b'}; font-weight:800; font-size:11px;">\${i.status.toUpperCase()}</td>
-                    <td style="text-align:right;"><button onclick="upd('\${i._id}')" style="background:#10b981; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:800;">OK</button></td>
-                </tr>\`;
+                return \`<tr><td><b>\${i.f1}</b></td><td>\${i.f2}</td><td>\${d.toLocaleString('hu-HU')}</td><td style="color:\${i.status==='Kész'?'#10b981':'#f59e0b'}; font-weight:800;">\${i.status.toUpperCase()}</td><td style="text-align:right;"><button onclick="upd('\${i._id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">OK</button></td></tr>\`;
             }).join('');
 
             if(document.getElementById('st-mon')) document.getElementById('st-mon').innerText = mInc.toLocaleString() + " Ft";
-            document.getElementById('report-list').innerHTML = Object.keys(mGroup).map(m => \`
-                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div><b>\${m}</b><br><small>\${mGroup[m].count} db lezárva</small></div>
-                    <div style="font-size:20px; color:var(--accent); font-weight:800;">\${mGroup[m].inc.toLocaleString()} Ft</div>
-                </div>\`).join('');
-            document.getElementById('doc-list').innerHTML = rawData.filter(i => i.notes).map(i => \`
-                <div class="card"><b>\${i.f1}</b><p style="color:#888; font-size:14px; margin-top:10px;">\${i.notes}</p></div>\`).join('');
+            document.getElementById('report-list').innerHTML = Object.keys(mGroup).map(m => \`<div class="card" style="display:flex; justify-content:space-between; align-items:center;"><div><b>\${m}</b><br><small>\${mGroup[m].count} db lezárva</small></div><div style="font-size:20px; color:var(--accent); font-weight:800;">\${mGroup[m].inc.toLocaleString()} Ft</div></div>\`).join('');
+            document.getElementById('doc-list').innerHTML = rawData.filter(i => i.notes).map(i => \`<div class="card"><b>\${i.f1} (\${i.f2})</b><p style="color:#666; font-size:14px; margin-top:10px;">\${i.notes}</p></div>\`).join('');
         }
 
         async function upd(id) { await fetch('/api/c/'+id, {method:'PUT'}); load(); }
 
         function exportCSV() {
-            let csv = "Nev,Reszlet,Datum,Statusz,Osszeg,Jegyzet\\n";
-            rawData.forEach(i => { csv += \`"\${i.f1}","\${i.f2}","\${i.createdAt}","\${i.status}","\${i.amount}","\${i.notes}"\\n\`; });
+            let csv = "Nev,Reszlet,Datum,Statusz,Osszeg\\n";
+            rawData.forEach(i => { csv += \`"\${i.f1}","\${i.f2}","\${i.createdAt}","\${i.status}","\${i.amount}"\\n\`; });
             const blob = new Blob(["\\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "EXPORT_" + new Date().toLocaleDateString() + ".csv";
+            link.download = "CRM_EXPORT_" + new Date().toLocaleDateString() + ".csv";
             link.click();
         }
     </script>
