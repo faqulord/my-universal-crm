@@ -18,15 +18,29 @@ const Client = mongoose.model('Client', new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 }));
 
-// --- 2. DINAMIKUS KONFIG ---
+// --- 2. DINAMIKUS KONFIG ÉS STÁTUSZOK ---
 const getConfig = () => {
     const ind = (process.env.INDUSTRY || 'default').trim().toLowerCase();
     const plan = (process.env.PLAN || 'basic').trim().toLowerCase();
+    
     const industries = {
-        'szerviz': { f1: 'Tulajdonos', f2: 'Rendszám/Típus', menu: 'Járművek', temps: { 'ready': 'Kész az autó', 'price': 'Árajánlat' } },
-        'ugyved': { f1: 'Ügyfél neve', f2: 'Ügyszám/Tárgy', menu: 'Akták', temps: { 'doc': 'Új irat érkezett', 'date': 'Időpont emlékeztető' } },
-        'default': { f1: 'Partner', f2: 'Projekt', menu: 'Ügyfelek', temps: { 'start': 'Munka elindult', 'done': 'Kész' } }
+        'szerviz': { 
+            f1: 'Tulajdonos', f2: 'Rendszám/Típus', menu: 'Járművek', 
+            stats: ['Aktív', 'Alkatrészre vár', 'Műszakira kész', 'Kész'],
+            temps: { 'ready': 'Az autó elkészült', 'wait': 'Alkatrész beérkezésére várunk', 'price': 'Árajánlat küldése' } 
+        },
+        'ugyved': { 
+            f1: 'Ügyfél neve', f2: 'Ügyszám/Tárgy', menu: 'Akták', 
+            stats: ['Aktív', 'Iratra vár', 'Folyamatban', 'Lezárva'],
+            temps: { 'doc': 'Új irat érkezett', 'date': 'Időpont emlékeztető', 'info': 'Tájékoztatás az ügy állásáról' } 
+        },
+        'default': { 
+            f1: 'Partner', f2: 'Projekt', menu: 'Ügyfelek', 
+            stats: ['Aktív', 'Folyamatban', 'Kész'],
+            temps: { 'start': 'Munka elindult', 'done': 'Feladat befejezve' } 
+        }
     };
+    
     const c = industries[ind] || industries['default'];
     return { ...c, plan, isPro: (plan==='pro'||plan==='premium'), isPremium: (plan==='premium'), ind };
 };
@@ -62,6 +76,12 @@ app.get('/', (req, res) => {
         table { width: 100%; border-collapse: collapse; min-width: 700px; }
         th { text-align: left; font-size: 11px; text-transform: uppercase; color: #444; padding: 15px; border-bottom: 1px solid var(--border); }
         td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        
+        /* Státusz gombok dizájnja */
+        .status-pill { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; margin-bottom: 5px; }
+        .stat-btn { background: #222; color: #aaa; border: 1px solid #333; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; margin-right: 2px; margin-top: 2px; }
+        .stat-btn:hover { background: var(--accent); color: white; }
+
         #email-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
         .modal-content { background: #0a0a0a; padding: 30px; border-radius: 15px; border: 1px solid var(--border); width: 100%; max-width: 500px; }
     </style>
@@ -131,6 +151,7 @@ app.get('/', (req, res) => {
     <script>
         let rawData = [];
         const industry = '${conf.ind}';
+        const stats = ${JSON.stringify(conf.stats)};
         const templates = ${JSON.stringify(conf.temps || {})};
         let cName = ""; let cTask = "";
 
@@ -150,66 +171,47 @@ app.get('/', (req, res) => {
         }
 
         async function save() {
-            const body = { 
-                f1: document.getElementById('f1').value, 
-                f2: document.getElementById('f2').value, 
-                email: document.getElementById('email').value, 
-                d: document.getElementById('d').value, 
-                notes: document.getElementById('notes')?.value || '', 
-                amount: document.getElementById('amt')?.value || 0 
-            };
+            const body = { f1: document.getElementById('f1').value, f2: document.getElementById('f2').value, email: document.getElementById('email').value, d: document.getElementById('d').value, notes: document.getElementById('notes')?.value || '', amount: document.getElementById('amt')?.value || 0 };
             if(!body.f1 || !body.f2) return alert("Név és Leírás kitöltése kötelező!");
-            
             await fetch('/api/c', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
-            
-            // Mezők ürítése
-            document.getElementById('f1').value=''; document.getElementById('f2').value=''; 
-            document.getElementById('email').value=''; if(document.getElementById('notes')) document.getElementById('notes').value='';
-            if(document.getElementById('amt')) document.getElementById('amt').value='';
-            
+            document.getElementById('f1').value=''; document.getElementById('f2').value=''; document.getElementById('email').value='';
+            if(document.getElementById('notes')) document.getElementById('notes').value=''; if(document.getElementById('amt')) document.getElementById('amt').value='';
             load();
         }
 
         async function load() {
             const res = await fetch('/api/c'); rawData = await res.json();
             document.getElementById('st-all').innerText = rawData.length;
-            document.getElementById('st-act').innerText = rawData.filter(i => i.status !== 'Kész').length;
+            document.getElementById('st-act').innerText = rawData.filter(i => i.status !== 'Kész' && i.status !== 'Lezárva').length;
             
             let mInc = 0; const now = new Date(); const curM = now.getFullYear() + "-" + (now.getMonth()+1); const mGroup = {};
 
             document.getElementById('list').innerHTML = rawData.map(i => {
                 const d = new Date(i.createdAt); const mFull = d.getFullYear() + " " + d.toLocaleString('hu-HU', {month:'long'});
                 if(!mGroup[mFull]) mGroup[mFull] = { inc: 0, count: 0 };
-                mGroup[mFull].inc += (i.amount || 0); mGroup[mFull].count++; if((d.getFullYear() + "-" + (d.getMonth()+1)) === curM) mInc += (i.amount || 0);
+                if(i.status === 'Kész' || i.status === 'Lezárva') { mGroup[mFull].inc += (i.amount || 0); mGroup[mFull].count++; if((d.getFullYear() + "-" + (d.getMonth()+1)) === curM) mInc += (i.amount || 0); }
 
-                return \`<tr><td><b>\${i.f1}</b></td><td>\${i.f2}</td><td style="font-size:11px; color:#555">\${d.toLocaleString('hu-HU')}</td><td style="color:\${i.status==='Kész'?'#10b981':'#f59e0b'}; font-weight:800; font-size:11px;">\${i.status.toUpperCase()}</td><td style="text-align:right;">
-                    <button onclick="upd('\${i._id}')" style="background:#10b981; color:white; border:none; padding:6px; border-radius:4px; cursor:pointer; font-weight:bold;">OK</button>
-                    ${conf.isPremium ? `\${i.email ? \`<button onclick="openMail('\${i.email}', '\${i.f1}', '\${i.f2}')" style="background:var(--accent); color:white; border:none; padding:6px; border-radius:4px; cursor:pointer; margin-left:4px;">✉</button>\` : ''}` : ''}
+                // Státusz gombok generálása az iparág alapján
+                const statusButtons = stats.map(s => \`<button onclick="upd('\${i._id}', '\${s}')" class="stat-btn">\${s}</button>\`).join('');
+
+                return \`<tr><td><b>\${i.f1}</b></td><td>\${i.f2}</td><td style="font-size:11px; color:#555">\${d.toLocaleString('hu-HU')}</td><td><span class="status-pill" style="background:\${i.status==='Kész'||i.status==='Lezárva'?'#10b981':'#f59e0b'}">\${i.status}</span><br>\${statusButtons}</td><td style="text-align:right;">
+                    ${conf.isPremium ? `\${i.email ? \`<button onclick="openMail('\${i.email}', '\${i.f1}', '\${i.f2}')" style="background:var(--accent); color:white; border:none; padding:6px; border-radius:4px; cursor:pointer;">✉</button>\` : ''}` : ''}
                     <button onclick="del('\${i._id}')" style="background:#ef4444; color:white; border:none; padding:6px; border-radius:4px; cursor:pointer; margin-left:4px;">✘</button>
                 </td></tr>\`;
             }).join('');
 
             if(document.getElementById('st-mon')) document.getElementById('st-mon').innerText = mInc.toLocaleString() + " Ft";
             
-            // DOKUMENTUMOK LISTA - BIZTOS MEGJELENÉS
             if(document.getElementById('doc-list')) {
                 document.getElementById('doc-list').innerHTML = rawData.filter(i => i.notes && i.notes.trim() !== "").map(i => \`
-                    <div class="card">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <b style="color:var(--accent); font-size:18px;">\${i.f1}</b>
-                            <small style="color:#555;">\${new Date(i.createdAt).toLocaleString('hu-HU')}</small>
-                        </div>
-                        <div style="background:#000; padding:10px; border-radius:6px; margin-bottom:10px; border:1px solid #111;">
-                            <small style="color:#444;">TÁRGY:</small> <b>\${i.f2}</b>
-                        </div>
-                        <p style="color:#aaa; font-size:14px; white-space: pre-wrap; margin:0;">\${i.notes}</p>
-                    </div>\`).join('');
+                    <div class="card"><div style="display:flex; justify-content:space-between; margin-bottom:10px;"><b style="color:var(--accent); font-size:18px;">\${i.f1}</b><small style="color:#555;">\${new Date(i.createdAt).toLocaleString('hu-HU')}</small></div>
+                    <div style="background:#000; padding:10px; border-radius:6px; margin-bottom:10px; border:1px solid #111;"><small style="color:#444;">TÁRGY:</small> <b>\${i.f2}</b></div>
+                    <p style="color:#aaa; font-size:14px; white-space: pre-wrap; margin:0;">\${i.notes}</p></div>\`).join('');
             }
-
             document.getElementById('report-list').innerHTML = Object.keys(mGroup).map(m => \`<div class="card" style="display:flex; justify-content:space-between; align-items:center;"><div><b>\${m}</b><br><small>\${mGroup[m].count} lezárt ügy</small></div><div style="font-size:20px; color:var(--accent); font-weight:800;">\${mGroup[m].inc.toLocaleString()} Ft</div></div>\`).join('');
         }
 
-        async function upd(id) { await fetch('/api/c/'+id, {method:'PUT'}); load(); }
+        async function upd(id, newStat) { await fetch('/api/c/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status: newStat})}); load(); }
         async function del(id) { if(confirm("Törlés?")) { await fetch('/api/c/'+id, {method:'DELETE'}); load(); } }
         
         function openMail(email, name, task) {
@@ -222,7 +224,11 @@ app.get('/', (req, res) => {
         function applyTemp() {
             const key = document.getElementById('mail-temp').value; if(!key) return;
             document.getElementById('mail-sub').value = "Értesítés: " + cTask;
-            let msg = "Tisztelt " + cName + "!\\n\\nAz ügye (" + cTask + ") állapota frissült.\\n\\nÜdvözlettel: ${brand}";
+            let msg = "Tisztelt " + cName + "!\\n\\n";
+            if(key==='ready') msg += "Örömmel értesítjük, hogy a(z) " + cTask + " elkészült és átvehető.";
+            else if(key==='wait') msg += "Tájékoztatjuk, hogy a(z) " + cTask + " javításához szükséges alkatrész beérkezésére várunk.";
+            else msg += "Az ügye (" + cTask + ") állapota frissült.";
+            msg += "\\n\\nÜdvözlettel: ${brand}";
             document.getElementById('mail-msg').value = msg;
         }
 
@@ -241,7 +247,14 @@ app.get('/', (req, res) => {
 // --- 4. API ÚTVONALAK ---
 app.get('/api/c', async (req, res) => res.json(await Client.find().sort({createdAt: -1})));
 app.post('/api/c', async (req, res) => { await new Client(req.body).save(); res.json({ok: true}); });
-app.put('/api/c/:id', async (req, res) => { await Client.findByIdAndUpdate(req.params.id, {status: 'Kész'}); res.json({ok: true}); });
+
+// Frissített PUT: Most már elmenti a küldött státuszt is!
+app.put('/api/c/:id', async (req, res) => { 
+    const newStatus = req.body.status || 'Kész';
+    await Client.findByIdAndUpdate(req.params.id, {status: newStatus}); 
+    res.json({ok: true}); 
+});
+
 app.delete('/api/c/:id', async (req, res) => { await Client.findByIdAndDelete(req.params.id); res.json({ok: true}); });
 
 app.post('/api/send-email', async (req, res) => {
@@ -253,4 +266,4 @@ app.post('/api/send-email', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log("CRM READY"));
+app.listen(PORT, () => console.log("SZERVIZ CRM ONLINE"));
