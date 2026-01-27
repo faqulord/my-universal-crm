@@ -3,392 +3,304 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS | Architect Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>NEXUS | Winter Luxury Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --bg: #050505;
-            --surface: #0f0f0f;
-            --primary: #ff3c00; /* International Orange - A mérnöki narancs */
-            --text-main: #ffffff;
-            --text-dim: #666;
-            --border: rgba(255, 255, 255, 0.08);
-            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+            --bg-deep: #0a0a2a; /* Éjszakai mélykék */
+            --gold: #ffd700; /* Luxus Arany */
+            --glass: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+            --border-gold: rgba(255, 215, 0, 0.3);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; /* Saját kurzor! */ }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            background-color: var(--bg);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
             overflow-x: hidden;
         }
 
-        /* --- SAJÁT KURZOR (A profi hatásért) --- */
-        .cursor-dot, .cursor-outline {
-            position: fixed; top: 0; left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%; pointer-events: none; z-index: 9999;
-        }
-        .cursor-dot { width: 8px; height: 8px; background: var(--primary); }
-        .cursor-outline {
-            width: 40px; height: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            transition: width 0.2s, height 0.2s, background-color 0.2s;
-        }
-        
-        /* Zaj Textúra (A titkos fűszer) */
-        .noise-overlay {
+        /* --- HÓESÉS EFFEKT --- */
+        .snow-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://grainy-gradients.vercel.app/noise.svg');
-            opacity: 0.05; pointer-events: none; z-index: 9000;
+            pointer-events: none; z-index: 1;
+        }
+        .snowflake {
+            position: absolute; width: 10px; height: 10px;
+            background: white; border-radius: 50%; opacity: 0.8;
+            animation: snow linear infinite;
+        }
+        @keyframes snow {
+            to { transform: translateY(100vh); }
         }
 
-        /* --- PRELOADER (Betöltő képernyő) --- */
-        .loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); z-index: 10000;
-            display: flex; justify-content: center; align-items: center;
-            animation: fadeOut 1s var(--ease) 2.5s forwards;
-        }
-        .loader-text {
-            font-family: 'Space Grotesk'; font-size: 1.5rem; letter-spacing: 5px;
-            overflow: hidden; white-space: nowrap; border-right: 2px solid var(--primary);
-            animation: typing 2s steps(20, end), blink .75s step-end infinite;
-        }
-
-        /* --- LAYOUT --- */
+        /* --- NAVIGÁCIÓ --- */
         nav {
-            position: fixed; top: 0; width: 100%; padding: 30px 50px;
             display: flex; justify-content: space-between; align-items: center;
-            z-index: 100; mix-blend-mode: difference;
+            padding: 20px 40px; position: fixed; top: 0; width: 100%; z-index: 100;
+            background: rgba(10, 10, 42, 0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-gold);
         }
-        .logo { font-family: 'Space Grotesk'; font-weight: 700; font-size: 1.5rem; letter-spacing: -1px; }
+        .logo { font-weight: 700; font-size: 1.5rem; letter-spacing: 2px; color: var(--gold); }
+        .season-badge { font-size: 0.8rem; color: var(--text); border: 1px solid var(--text); padding: 5px 15px; border-radius: 20px; }
 
+        /* --- HERO (Marketing) --- */
         .hero {
-            height: 100vh; display: flex; align-items: center;
-            padding: 0 5vw; position: relative;
+            padding: 150px 20px 50px 20px;
+            text-align: center; position: relative; z-index: 10;
         }
-
-        .hero-content { z-index: 2; width: 50%; }
-
         h1 {
-            font-family: 'Space Grotesk'; font-size: 5vw; line-height: 0.9;
-            text-transform: uppercase; margin-bottom: 2rem;
-            opacity: 0; animation: slideUp 1s var(--ease) 2.8s forwards;
+            font-size: 4rem; font-weight: 700; line-height: 1.1; margin-bottom: 20px;
+            text-transform: uppercase;
         }
-        h1 span { color: var(--primary); }
-
-        .specs-row {
-            display: flex; gap: 40px; margin-bottom: 3rem;
-            opacity: 0; animation: slideUp 1s var(--ease) 3s forwards;
-        }
-        .spec { border-left: 1px solid var(--primary); padding-left: 15px; }
-        .spec strong { display: block; font-family: 'Space Grotesk'; font-size: 1.5rem; }
-        .spec small { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-
-        /* KÉP PREZENTÁCIÓ */
-        .hero-visual {
-            position: absolute; right: 5%; top: 50%;
-            transform: translateY(-50%); width: 45%; height: 80vh;
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; animation: fadeIn 1.5s var(--ease) 3.2s forwards;
-        }
-        .hero-img {
-            width: 100%; max-width: 600px;
-            filter: drop-shadow(0 20px 80px rgba(255, 60, 0, 0.15));
-            transform: rotate(-5deg); transition: transform 0.5s var(--ease);
-        }
-        .hero-visual:hover .hero-img { transform: rotate(0deg) scale(1.05); }
-
-        /* ÁRAZÁS CÍMKE (Tech stílus) */
-        .price-tag {
-            position: absolute; bottom: 10%; right: 10%;
-            background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);
-            padding: 20px 40px; border: 1px solid var(--border);
-            text-align: right;
-        }
-        .price-big { font-family: 'Space Grotesk'; font-size: 2.5rem; font-weight: 700; display: block; }
-        .price-small { color: var(--primary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
-
-        /* --- KATALÓGUS RÉSZ --- */
-        .catalog { padding: 100px 5vw; }
-        .section-header {
-            font-family: 'Space Grotesk'; font-size: 2rem; margin-bottom: 50px;
-            border-bottom: 1px solid var(--border); padding-bottom: 20px;
-            display: flex; justify-content: space-between; align-items: end;
-        }
-
-        .grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        /* PRÉMIUM KÁRTYA */
-        .card {
-            background: var(--surface); border: 1px solid var(--border);
-            padding: 30px; position: relative; overflow: hidden;
-            transition: all 0.4s var(--ease);
-        }
-        .card:hover {
-            border-color: var(--primary); transform: translateY(-10px);
+        h1 span { color: var(--gold); text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+        .hero-text {
+            font-size: 1.2rem; max-width: 600px; margin: 0 auto 40px auto;
+            color: rgba(255,255,255,0.8);
         }
         
-        .card-num {
-            font-family: 'Space Grotesk'; font-size: 4rem; color: rgba(255,255,255,0.03);
-            position: absolute; top: -10px; right: 10px; font-weight: 700;
+        .price-box {
+            display: inline-block; background: var(--glass);
+            border: 2px solid var(--gold); padding: 20px 40px; border-radius: 50px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
         }
+        .price-big { font-size: 2.5rem; font-weight: 700; color: var(--gold); }
 
-        .card-title {
-            font-family: 'Space Grotesk'; font-size: 1.5rem; margin-bottom: 20px;
-            text-transform: uppercase; position: relative; z-index: 2;
+        /* KÉP */
+        .hero-img-container { margin: 50px auto; max-width: 600px; }
+        .hero-img {
+            width: 100%; border-radius: 20px;
+            border: 3px solid var(--border-gold);
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.15);
+            transform: rotate(-3deg); transition: transform 0.5s;
         }
+        .hero-img:hover { transform: rotate(0deg) scale(1.02); }
 
-        .notes {
-            list-style: none; opacity: 0.6; transition: opacity 0.3s;
-        }
-        .notes li {
-            margin-bottom: 8px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;
-        }
-        .notes li::before { content: ''; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; }
+        /* --- KATALÓGUS (Átlátható Kártyák) --- */
+        .catalog { padding: 50px 20px 120px 20px; max-width: 1200px; margin: 0 auto; position: relative; z-index: 10; }
+        .section-title { font-size: 2rem; text-align: center; margin-bottom: 50px; color: var(--gold); text-transform: uppercase; }
 
-        .card:hover .notes { opacity: 1; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
 
-        /* --- TELEGRAM MAGNETIC BUTTON --- */
-        .cta-wrapper {
-            position: fixed; bottom: 40px; right: 40px; z-index: 900;
+        .card {
+            background: var(--glass); border: 1px solid var(--border-gold);
+            border-radius: 16px; padding: 25px; backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
         }
+        .card:hover { transform: translateY(-10px); box-shadow: 0 10px 30px rgba(255, 215, 0, 0.1); background: rgba(255, 215, 0, 0.05); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-num { font-size: 3rem; font-weight: 700; color: rgba(255,255,255,0.1); }
+        .card-title { font-size: 1.2rem; font-weight: 700; text-transform: uppercase; }
+
+        .flavor-list { list-style: none; }
+        .flavor-list li {
+            margin-bottom: 10px; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.8);
+        }
+        .flavor-list li i { color: var(--gold); font-size: 0.7rem; }
+
+        /* --- TELEGRAM GOMB (Arany) --- */
         .telegram-btn {
-            width: 80px; height: 80px; border-radius: 50%;
-            background: var(--primary); color: #000;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 32px; text-decoration: none;
-            transition: transform 0.3s var(--ease);
-            position: relative; overflow: hidden;
+            position: fixed; bottom: 30px; right: 30px;
+            width: 70px; height: 70px; background: var(--gold);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 32px; color: var(--bg-deep); text-decoration: none;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); z-index: 999;
+            animation: pulse 2s infinite; border: 3px solid rgba(255,255,255,0.5);
         }
-        .telegram-btn::after {
-            content: ''; position: absolute; width: 100%; height: 100%;
-            border-radius: 50%; border: 1px solid var(--primary);
-            animation: ripple 2s infinite;
-        }
-        .telegram-btn:hover { transform: scale(1.1); }
+        @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(255,215,0,0.7);} 70% {box-shadow: 0 0 0 20px rgba(255,215,0,0);} 100% {box-shadow: 0 0 0 0 rgba(255,215,0,0);} }
 
-        /* ANIMÁCIÓK */
-        @keyframes typing { from { width: 0 } to { width: 100% } }
-        @keyframes blink { 50% { border-color: transparent } }
-        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes ripple { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.6); opacity: 0; } }
-
-        /* RESPONSIVE */
-        @media(max-width: 900px) {
-            .hero { flex-direction: column; padding-top: 120px; height: auto; }
-            .hero-content { width: 100%; text-align: center; }
-            h1 { font-size: 3rem; }
-            .hero-visual { position: relative; width: 100%; height: 400px; transform: none; right: auto; top: auto; margin-top: 30px; }
-            .hero-img { transform: rotate(0deg); max-width: 80%; }
-            .specs-row { justify-content: center; }
-            .price-tag { position: relative; bottom: auto; right: auto; margin-top: 30px; text-align: center; }
-            .cursor-dot, .cursor-outline { display: none; /* Mobilon nincs kurzor */ }
-        }
+        @media (max-width: 768px) { h1 { font-size: 2.5rem; } }
     </style>
 </head>
 <body>
 
-    <div class="loader">
-        <div class="loader-text">SYSTEM INITIALIZING...</div>
-    </div>
-
-    <div class="noise-overlay"></div>
-
-    <div class="cursor-dot" id="cursor-dot"></div>
-    <div class="cursor-outline" id="cursor-outline"></div>
+    <div class="snow-container" id="snow"></div>
 
     <nav>
-        <div class="logo">NEXUS / VAPE</div>
-        <div style="font-size: 0.8rem; letter-spacing: 2px;">V.2026.1</div>
+        <div class="logo">NEXUS</div>
+        <div class="season-badge">WINTER EDITION</div>
     </nav>
 
-    <div class="cta-wrapper">
-        <a href="https://t.me/Mrnbeats" target="_blank" class="telegram-btn">
-            <i class="fab fa-telegram-plane"></i>
-        </a>
-    </div>
+    <a href="https://t.me/Mrnbeats" target="_blank" class="telegram-btn">
+        <i class="fab fa-telegram-plane"></i>
+    </a>
 
-    <main>
-        <section class="hero">
-            <div class="hero-content">
-                <h1>Redefining <br><span>Vape</span> Tech.</h1>
-                
-                <div class="specs-row">
-                    <div class="spec">
-                        <strong>80K</strong>
-                        <small>Puff Capacity</small>
-                    </div>
-                    <div class="spec">
-                        <strong>4in1</strong>
-                        <small>Multi-Flavor</small>
-                    </div>
-                </div>
-            </div>
+    <section class="hero">
+        <h1>A Tél <br><span>Luxus Ízei.</span></h1>
+        <p class="hero-text">
+            Ne fázz, gőzölj stílusosan. A Vapsolo 4in1 kollekció elhozza a meleget a hideg napokra. 80.000 slukk tömény kényeztetés.
+        </p>
+        
+        <div class="price-box">
+            <div class="price-big">7000 FT <span style="font-size:1rem; color:white;">/ db</span></div>
+            <div style="font-size: 0.9rem; margin-top: 5px; color: rgba(255,255,255,0.7);">VIP Ár (2 db-tól) | Normál: 7500 Ft</div>
+        </div>
 
-            <div class="hero-visual">
-                <img src="https://i.postimg.cc/1tFJNXpp/received-752156714173959.jpg" alt="Vapsolo Device" class="hero-img">
-            </div>
+        <div class="hero-img-container">
+            <img src="https://i.postimg.cc/1tFJNXpp/received-752156714173959.jpg" alt="Vapsolo" class="hero-img">
+        </div>
+    </section>
 
-            <div class="price-tag">
-                <span class="price-big">7000 FT</span>
-                <span class="price-small">VIP Price (2+ Units)</span>
-            </div>
-        </section>
-
-        <section class="catalog">
-            <div class="section-header">
-                <span>SYSTEM CONFIGURATION</span>
-                <span style="font-size: 0.8rem; color: var(--text-dim);">SELECT FLAVOR PROFILE</span>
-            </div>
-
-            <div class="grid">
-                <div class="card">
+    <section class="catalog">
+        <h2 class="section-title">Válassz a Prémium Kollekcióból</h2>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#ff4d4d">PIROS / RED</div>
                     <div class="card-num">01</div>
-                    <div class="card-title" style="color: #ff4d4d;">RED EDITION</div>
-                    <ul class="notes">
-                        <li>Citrom lime</li>
-                        <li>Görögdinnye jég</li>
-                        <li>Fekete jég sárkány</li>
-                        <li>Szerelem 66</li>
-                    </ul>
                 </div>
-
-                <div class="card">
-                    <div class="card-num">02</div>
-                    <div class="card-title" style="color: #ff9f1a;">ORANGE EDITION</div>
-                    <ul class="notes">
-                        <li>Vanília kóla</li>
-                        <li>Citromos barack</li>
-                        <li>Eper málna</li>
-                        <li>Szőlő jég</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">03</div>
-                    <div class="card-title" style="color: #3ae374;">GREEN EDITION</div>
-                    <ul class="notes">
-                        <li>Szőlő robbanás</li>
-                        <li>Licsi jég</li>
-                        <li>Kiwi passió guava</li>
-                        <li>Őszibarack bogyó</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">04</div>
-                    <div class="card-title" style="color: #18dcff;">BLUE EDITION</div>
-                    <ul class="notes">
-                        <li>Dinnye jég eper</li>
-                        <li>Eper mangó</li>
-                        <li>Áfonya jég</li>
-                        <li>Pezsgő cseresznye</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">05</div>
-                    <div class="card-title" style="color: #fff200;">YELLOW EDITION</div>
-                    <ul class="notes">
-                        <li>Cseresznye kóla</li>
-                        <li>Eper görögdinnye</li>
-                        <li>Frissítő</li>
-                        <li>Lédús őszibarack</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">06</div>
-                    <div class="card-title" style="color: #dcdde1;">GOLD EDITION</div>
-                    <ul class="notes">
-                        <li>Citrom lime</li>
-                        <li>Eper jég</li>
-                        <li>Málna dinnye</li>
-                        <li>Pezsgő cseresznye</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">07</div>
-                    <div class="card-title" style="color: #67e6dc;">CYAN EDITION</div>
-                    <ul class="notes">
-                        <li>Rózsaszín limonádé</li>
-                        <li>Kiwi guava</li>
-                        <li>Eper banán</li>
-                        <li>Őszibarack bogyó</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">08</div>
-                    <div class="card-title" style="color: #c56cf0;">PURPLE EDITION</div>
-                    <ul class="notes">
-                        <li>Eper mangó</li>
-                        <li>Kék razz limonádé</li>
-                        <li>Vanília fagylalt</li>
-                        <li>Savanyú bogyó</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">09</div>
-                    <div class="card-title" style="color: #32ff7e;">TEAL EDITION</div>
-                    <ul class="notes">
-                        <li>Vegyes bogyók</li>
-                        <li>Cseresznye citrom</li>
-                        <li>Dinnye rágógumi</li>
-                        <li>Eper kiwi</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-num">10</div>
-                    <div class="card-title" style="color: #ffffff;">WHITE EDITION</div>
-                    <ul class="notes">
-                        <li>Mojito</li>
-                        <li>Szörny mangó</li>
-                        <li>Rózsaszín limonádé</li>
-                        <li>Hölgy gyilkos</li>
-                    </ul>
-                </div>
-
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Citrom lime</li>
+                    <li><i class="fas fa-snowflake"></i> Görögdinnye jég</li>
+                    <li><i class="fas fa-snowflake"></i> Fekete jég sárkány</li>
+                    <li><i class="fas fa-snowflake"></i> Szerelem 66</li>
+                </ul>
             </div>
-        </section>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#ff9f1a">NARANCS / ORANGE</div>
+                    <div class="card-num">02</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Vanília kóla</li>
+                    <li><i class="fas fa-snowflake"></i> Citromos barack</li>
+                    <li><i class="fas fa-snowflake"></i> Eper málna</li>
+                    <li><i class="fas fa-snowflake"></i> Szőlő jég</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#3ae374">ZÖLD / GREEN</div>
+                    <div class="card-num">03</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Szőlő robbanás</li>
+                    <li><i class="fas fa-snowflake"></i> Licsi jég</li>
+                    <li><i class="fas fa-snowflake"></i> Kiwi passió guava</li>
+                    <li><i class="fas fa-snowflake"></i> Őszibarack bogyó</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#18dcff">KÉK / BLUE</div>
+                    <div class="card-num">04</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Dinnye jég eper</li>
+                    <li><i class="fas fa-snowflake"></i> Eper mangó</li>
+                    <li><i class="fas fa-snowflake"></i> Áfonya jég</li>
+                    <li><i class="fas fa-snowflake"></i> Pezsgő cseresznye</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#fff200">SÁRGA / YELLOW</div>
+                    <div class="card-num">05</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Cseresznye kóla</li>
+                    <li><i class="fas fa-snowflake"></i> Eper görögdinnye</li>
+                    <li><i class="fas fa-snowflake"></i> Frissítő</li>
+                    <li><i class="fas fa-snowflake"></i> Lédús őszibarack</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#dcdde1">GOLD / BEIGE</div>
+                    <div class="card-num">06</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Citrom lime</li>
+                    <li><i class="fas fa-snowflake"></i> Eper jég</li>
+                    <li><i class="fas fa-snowflake"></i> Málna dinnye</li>
+                    <li><i class="fas fa-snowflake"></i> Pezsgő cseresznye</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#67e6dc">CIÁN / CYAN</div>
+                    <div class="card-num">07</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Rózsaszín limonádé</li>
+                    <li><i class="fas fa-snowflake"></i> Kiwi guava</li>
+                    <li><i class="fas fa-snowflake"></i> Eper banán</li>
+                    <li><i class="fas fa-snowflake"></i> Őszibarack bogyó</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#c56cf0">LILA / PURPLE</div>
+                    <div class="card-num">08</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Eper mangó</li>
+                    <li><i class="fas fa-snowflake"></i> Kék razz limonádé</li>
+                    <li><i class="fas fa-snowflake"></i> Vanília fagylalt</li>
+                    <li><i class="fas fa-snowflake"></i> Savanyú bogyó</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#32ff7e">TÜRKIZ / TEAL</div>
+                    <div class="card-num">09</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Vegyes bogyók</li>
+                    <li><i class="fas fa-snowflake"></i> Cseresznye citrom</li>
+                    <li><i class="fas fa-snowflake"></i> Dinnye rágógumi</li>
+                    <li><i class="fas fa-snowflake"></i> Eper kiwi</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#ffffff">FEHÉR / WHITE</div>
+                    <div class="card-num">10</div>
+                </div>
+                <ul class="flavor-list">
+                    <li><i class="fas fa-snowflake"></i> Mojito</li>
+                    <li><i class="fas fa-snowflake"></i> Szörny mangó</li>
+                    <li><i class="fas fa-snowflake"></i> Rózsaszín limonádé</li>
+                    <li><i class="fas fa-snowflake"></i> Hölgy gyilkos</li>
+                </ul>
+            </div>
+        </div>
+    </section>
 
-        <footer style="text-align: center; padding: 50px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.8rem;">
-            &copy; 2026 NEXUS SYSTEMS. DESIGNED BY PRO DEVELOPERS.
-        </footer>
-    </main>
+    <footer style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5); font-size: 0.8rem;">
+        &copy; 2026 NEXUS LUXURY.
+    </footer>
 
     <script>
-        const cursorDot = document.getElementById("cursor-dot");
-        const cursorOutline = document.getElementById("cursor-outline");
+        const snowContainer = document.getElementById('snow');
+        const snowflakeCount = 50; // Hópelyhek száma
 
-        window.addEventListener("mousemove", function (e) {
-            const posX = e.clientX;
-            const posY = e.clientY;
+        for (let i = 0; i < snowflakeCount; i++) {
+            const snowflake = document.createElement('div');
+            snowflake.className = 'snowflake';
+            
+            // Véletlenszerű pozíció, méret és sebesség
+            const left = Math.random() * 100;
+            const size = Math.random() * 5 + 2; // 2px és 7px között
+            const duration = Math.random() * 10 + 5; // 5s és 15s között
+            const delay = Math.random() * 5;
 
-            // Dot azonnal követ
-            cursorDot.style.left = `${posX}px`;
-            cursorDot.style.top = `${posY}px`;
+            snowflake.style.left = `${left}vw`;
+            snowflake.style.width = `${size}px`;
+            snowflake.style.height = `${size}px`;
+            snowflake.style.animationDuration = `${duration}s`;
+            snowflake.style.animationDelay = `- ${delay}s`; // Azonnal induljon
 
-            // Outline késleltetve követ (smooth)
-            cursorOutline.style.animate({
-                left: `${posX}px`,
-                top: `${posY}px`
-            }, { duration: 500, fill: "forwards" });
-        });
+            snowContainer.appendChild(snowflake);
+        }
     </script>
+
 </body>
 </html>
