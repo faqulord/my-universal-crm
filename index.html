@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS VAPE | 4in1 System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111111;
+            --brand-orange: #ff4500; /* Brutál narancs */
+            --light-gray: #f4f4f4;
+            --border: #000000;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Roboto', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* --- FŐ LAYOUT (OSZTOTT KÉPERNYŐ) --- */
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* BAL OLDAL (FIX) - MARKETING & KÉP */
+        .sidebar {
+            width: 50%;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-right: 3px solid var(--text);
+            background: var(--light-gray);
+            z-index: 10;
+        }
+
+        /* JOBB OLDAL (GÖRGETHETŐ) - ÍZEK */
+        .content {
+            width: 50%;
+            margin-left: 50%; /* Hogy ne takarja ki a fix oldalt */
+            padding: 3rem;
+            background: var(--bg);
+        }
+
+        /* --- DESIGN ELEMEK --- */
+        .logo {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            letter-spacing: -2px;
+        }
+        .logo span { color: var(--brand-orange); }
+
+        h1 {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 3.5rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+
+        .marketing-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            border-left: 5px solid var(--brand-orange);
+            padding-left: 15px;
+        }
+
+        .price-tag {
+            background: var(--text);
+            color: var(--bg);
+            padding: 15px 25px;
+            display: inline-block;
+            font-weight: 700;
+            font-size: 1.5rem;
+            transform: rotate(-2deg);
+            margin-bottom: 2rem;
+            box-shadow: 5px 5px 0px var(--brand-orange);
+        }
+
+        .product-img {
+            width: 100%;
+            max-width: 500px;
+            border: 3px solid var(--text);
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
+            filter: grayscale(20%) contrast(1.2); /* Kicsit nyersebb hatás */
+            transition: transform 0.3s;
+        }
+        .product-img:hover { transform: translate(-5px, -5px); box-shadow: 15px 15px 0px var(--brand-orange); }
+
+        /* --- ACCORDION (OLDALSÓ GOMBOK) --- */
+        .accordion-wrapper {
+            margin-top: 2rem;
+        }
+
+        .acc-item {
+            margin-bottom: 15px;
+            border: 2px solid var(--text);
+            background: var(--bg);
+            transition: all 0.2s;
+        }
+
+        .acc-btn {
+            width: 100%;
+            padding: 20px;
+            background: var(--bg);
+            border: none;
+            text-align: left;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .acc-btn:hover {
+            background: var(--text);
+            color: var(--bg);
+        }
+
+        .acc-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: var(--light-gray);
+            border-top: 2px solid var(--text);
+        }
+
+        .acc-content ul {
+            list-style: none;
+            padding: 20px;
+        }
+
+        .acc-content li {
+            padding: 8px 0;
+            font-weight: 700;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+        }
+        .acc-content li::before {
+            content: "■";
+            color: var(--brand-orange);
+            margin-right: 10px;
+            font-size: 0.8rem;
+        }
+
+        /* Aktív állapot */
+        .acc-item.active { box-shadow: 8px 8px 0px var(--brand-orange); transform: translateX(-5px); }
+        .acc-item.active .acc-btn { background: var(--text); color: white; }
+        .acc-item.active .acc-content { max-height: 300px; }
+
+        /* --- TELEGRAM GOMB (Négyzetes, ipari) --- */
+        .telegram-fixed {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            background: var(--brand-orange);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            border: 3px solid var(--text);
+            box-shadow: 5px 5px 0px var(--text);
+            z-index: 100;
+            transition: transform 0.2s;
+        }
+        .telegram-fixed:hover {
+            transform: translate(-3px, -3px);
+            box-shadow: 8px 8px 0px var(--text);
+        }
+        .telegram-fixed:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px var(--text);
+        }
+
+        /* --- MOBIL NÉZET --- */
+        @media (max-width: 900px) {
+            .main-container { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 3px solid var(--text);
+                padding: 2rem 1.5rem;
+            }
+            .content {
+                width: 100%;
+                margin-left: 0;
+                padding: 1.5rem;
+            }
+            h1 { font-size: 2.5rem; }
+            .product-img { max-width: 100%; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <a href="https://t.me/Mrnbeats" target="_blank" class="telegram-fixed">
+        <i class="fab fa-telegram-plane"></i>
+    </a>
+
+    <div class="main-container">
+        
+        <aside class="sidebar">
+            <div class="logo">NEXUS<span>VAPE</span></div>
+            
+            <h1>4 TARTÁLY.<br>EGY CÉL.</h1>
+            
+            <div class="marketing-text">
+                Válts ízt egyetlen mozdulattal. A Vapsolo Quads nem játék. 80.000 slukk tömény élvezet, ipari kivitelben.
+            </div>
+
+            <div class="price-tag">
+                7000 FT / DB *
+            </div>
+            <p style="font-size: 0.8rem; font-weight: bold; margin-bottom: 20px;">* 2 db vásárlása esetén. (1 db ára: 7500 Ft)</p>
+
+            <img src="https://i.postimg.cc/1tFJNXpp/received-752156714173959.jpg" alt="Vapsolo Device" class="product-img">
+        </aside>
+
+        <main class="content">
+            <h2 style="font-family: 'Archivo Black'; margin-bottom: 20px; font-size: 2rem;">VÁLASSZ KONFIGURÁCIÓT</h2>
+            
+            <div class="accordion-wrapper">
+                
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>01 // PIROS</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Citrom lime</li>
+                            <li>Görögdinnye jég</li>
+                            <li>Fekete jég sárkány</li>
+                            <li>Szerelem 66</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>02 // NARANCS</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Vanília kóla</li>
+                            <li>Citromos barack</li>
+                            <li>Eper málna</li>
+                            <li>Szőlő jég</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>03 // ZÖLD</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Szőlő robbanás</li>
+                            <li>Licsi jég</li>
+                            <li>Kiwi passió guava</li>
+                            <li>Őszibarack bogyó</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>04 // KÉK</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Dinnye jég eper</li>
+                            <li>Eper mangó</li>
+                            <li>Áfonya jég</li>
+                            <li>Pezsgő cseresznye</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>05 // SÁRGA</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Cseresznye kóla</li>
+                            <li>Eper görögdinnye</li>
+                            <li>Frissítő</li>
+                            <li>Lédús őszibarack</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>06 // GOLD</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Citrom lime</li>
+                            <li>Eper jég</li>
+                            <li>Málna dinnye</li>
+                            <li>Pezsgő cseresznye</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>07 // CIÁN</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Rózsaszín limonádé</li>
+                            <li>Kiwi guava</li>
+                            <li>Eper banán</li>
+                            <li>Őszibarack bogyó</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>08 // LILA</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Eper mangó</li>
+                            <li>Kék razz limonádé</li>
+                            <li>Vanília fagylalt</li>
+                            <li>Savanyú bogyó</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>09 // TÜRKIZ</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Vegyes bogyók</li>
+                            <li>Cseresznye citrom</li>
+                            <li>Dinnye rágógumi</li>
+                            <li>Eper kiwi</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item">
+                    <button class="acc-btn" onclick="toggle(this)">
+                        <span>10 // FEHÉR</span> <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="acc-content">
+                        <ul>
+                            <li>Mojito</li>
+                            <li>Szörny mangó</li>
+                            <li>Rózsaszín limonádé</li>
+                            <li>Hölgy gyilkos</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+            <footer style="margin-top: 50px; border-top: 3px solid black; padding-top: 20px; font-weight: bold;">
+                NEXUS VAPE HUNGARY &copy; 2026
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        function toggle(btn) {
+            const item = btn.parentElement;
+            const allItems = document.querySelectorAll('.acc-item');
+            
+            // Bezárjuk a többit
+            allItems.forEach(i => {
+                if(i !== item) i.classList.remove('active');
+            });
+
+            item.classList.toggle('active');
+            
+            // Ikon csere
+            const icon = btn.querySelector('i');
+            if(item.classList.contains('active')) {
+                icon.classList.remove('fa-plus');
+                icon.classList.add('fa-minus');
+            } else {
+                icon.classList.remove('fa-minus');
+                icon.classList.add('fa-plus');
+            }
+        }
+    </script>
+
+</body>
+</html>
